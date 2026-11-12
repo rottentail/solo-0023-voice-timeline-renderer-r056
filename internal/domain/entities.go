@@ -2,19 +2,27 @@ package domain
 
 import "time"
 
+// MeasurementsVersionV2 marks source metrics computed per channel directly
+// from the stored PCM, without folding stereo into a mono mid signal.
+// Records written by older builds lack the marker (zero value) and carry
+// legacy mid-downmix measurements that must be recomputed lazily or by the
+// startup backfill.
+const MeasurementsVersionV2 = 2
+
 type SourceAsset struct {
-	ID            string    `json:"id"`
-	Name          string    `json:"name"`
-	Digest        string    `json:"digest"`
-	ByteCount     int64     `json:"byte_count"`
-	SampleRate    int       `json:"sample_rate"`
-	Channels      int       `json:"channels"`
-	BitsPerSample int       `json:"bits_per_sample"`
-	FrameCount    int64     `json:"frame_count"`
-	DurationMS    int64     `json:"duration_ms"`
-	PeakDBFS      float64   `json:"peak_dbfs"`
-	RMSDBFS       float64   `json:"rms_dbfs"`
-	CreatedAt     time.Time `json:"created_at"`
+	ID                  string    `json:"id"`
+	Name                string    `json:"name"`
+	Digest              string    `json:"digest"`
+	ByteCount           int64     `json:"byte_count"`
+	SampleRate          int       `json:"sample_rate"`
+	Channels            int       `json:"channels"`
+	BitsPerSample       int       `json:"bits_per_sample"`
+	FrameCount          int64     `json:"frame_count"`
+	DurationMS          int64     `json:"duration_ms"`
+	PeakDBFS            float64   `json:"peak_dbfs"`
+	RMSDBFS             float64   `json:"rms_dbfs"`
+	MeasurementsVersion int       `json:"measurements_version,omitempty"`
+	CreatedAt           time.Time `json:"created_at"`
 }
 
 type TimelineSpan struct {

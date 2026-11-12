@@ -3,7 +3,6 @@ package render
 import (
 	"context"
 	"errors"
-	"math"
 
 	"voice-timeline-renderer/internal/audiocodec"
 	"voice-timeline-renderer/internal/domain"
@@ -63,34 +62,11 @@ func prepareSpans(
 		if err != nil {
 			return nil, 0, err
 		}
-		if mapped.Channels == 2 {
-			frames := mapped.FrameCount()
-			peaks := [2]float64{}
-			for frame := int64(0); frame < frames; frame++ {
-				for channel := 0; channel < 2; channel++ {
-					value := math.Abs(float64(mapped.Samples[int(frame)*2+channel]))
-					if value > peaks[channel] {
-						peaks[channel] = value
-					}
-				}
-			}
-			target := math.Max(peaks[0], peaks[1])
-			if target > 0 {
-				gains := [2]float64{1, 1}
-				for channel := 0; channel < 2; channel++ {
-					if peaks[channel] > 0 {
-						gains[channel] = target / peaks[channel]
-					}
-				}
-				for frame := int64(0); frame < frames; frame++ {
-					for channel := 0; channel < 2; channel++ {
-						index := int(frame)*2 + channel
-						value := float64(mapped.Samples[index]) * gains[channel]
-						mapped.Samples[index] = float32(value)
-					}
-				}
-			}
-		}
+		// The original inter-channel amplitude relationship is preserved:
+		// no per-channel gain is applied here. Any level change must come
+		// from the explicit span gain and the single whole-work peak
+		// normalization applied after mixing, so a weaker channel stays
+		// weaker instead of being silently raised to match its neighbor.
 		frames := mapped.FrameCount()
 		if frames < 1 {
 			return nil, 0, errors.New("span produced no output frames")

@@ -28,3 +28,9 @@ func (repo *Repository) path(parts ...string) string {
 	all := append([]string{repo.root}, parts...)
 	return filepath.Join(all...)
 }
+
+// Root returns the absolute data directory. It is intended for maintenance
+// tooling and tests; regular workflows use the repository methods.
+func (repo *Repository) Root() string {
+	return repo.root
+}

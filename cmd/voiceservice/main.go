@@ -30,6 +30,20 @@ func main() {
 		slog.Error("cannot initialize repository", "error", err)
 		os.Exit(1)
 	}
+
+	runContext, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
+	defer stop()
+
+	// Recompute any legacy mid-downmix source measurements in place. The
+	// backfill is incremental, resumable, and atomic: it never deletes media,
+	// does not require re-registration, and yields the lock between batches so
+	// in-flight production traffic is not blocked.
+	repaired, err := repo.BackfillSourceMeasurements(runContext)
+	if err != nil {
+		slog.Error("source measurement backfill stopped", "error", err)
+		os.Exit(1)
+	}
+	slog.Info("source measurement backfill finished", "repaired", repaired)
 	serviceLayer := service.New(repo, service.DefaultConfig())
 	api := httpapi.New(serviceLayer, httpapi.Options{
 		MaxSourceRequestBytes: 48 << 20,
@@ -44,8 +58,6 @@ func main() {
 		IdleTimeout:       60 * time.Second,
 	}
 
-	runContext, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
-	defer stop()
 	go func() {
 		<-runContext.Done()
 		shutdownContext, cancel := context.WithTimeout(context.Background(), 10*time.Second)

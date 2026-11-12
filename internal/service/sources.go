@@ -64,31 +64,24 @@ func (s *Service) CreateSource(ctx context.Context, id string, request SourceWri
 	if err := domain.ValidateSourceFacts("source", facts); err != nil {
 		return domain.SourceAsset{}, false, err
 	}
-	monitor := clip.Samples
-	if clip.Channels == 2 {
-		frames := clip.FrameCount()
-		monitor = make([]float32, frames)
-		for frame := int64(0); frame < frames; frame++ {
-			start := int(frame) * clip.Channels
-			left := clip.Samples[start]
-			right := clip.Samples[start+1]
-			monitor[frame] = (left + right) * 0.5
-		}
-	}
-	measurements := audiocodec.Measure(monitor)
+	// Measure the decoded clip directly. Every channel is measured
+	// independently so stereo phase relationships and left/right level
+	// differences describe the original recording instead of a mono fold.
+	measurements := audiocodec.MeasureClip(clip)
 	asset := domain.SourceAsset{
-		ID:            id,
-		Name:          request.Name,
-		Digest:        digest,
-		ByteCount:     info.ByteCount,
-		SampleRate:    info.SampleRate,
-		Channels:      info.Channels,
-		BitsPerSample: info.BitsPerSample,
-		FrameCount:    info.FrameCount,
-		DurationMS:    durationMilliseconds(info.FrameCount, info.SampleRate),
-		PeakDBFS:      measurements.PeakDBFS,
-		RMSDBFS:       measurements.RMSDBFS,
-		CreatedAt:     time.Now().UTC(),
+		ID:                  id,
+		Name:                request.Name,
+		Digest:              digest,
+		ByteCount:           info.ByteCount,
+		SampleRate:          info.SampleRate,
+		Channels:            info.Channels,
+		BitsPerSample:       info.BitsPerSample,
+		FrameCount:          info.FrameCount,
+		DurationMS:          durationMilliseconds(info.FrameCount, info.SampleRate),
+		PeakDBFS:            measurements.PeakDBFS,
+		RMSDBFS:             measurements.RMSDBFS,
+		MeasurementsVersion: domain.MeasurementsVersionV2,
+		CreatedAt:           time.Now().UTC(),
 	}
 	if err := s.repo.SaveSource(asset, payload); err != nil {
 		return domain.SourceAsset{}, false, err
